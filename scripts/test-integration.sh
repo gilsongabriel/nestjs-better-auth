@@ -95,11 +95,12 @@ create_test_project() {
     log_info "Creating Better Auth configuration..."
     cat > src/auth.config.ts << 'EOF'
 import { betterAuth } from 'better-auth';
-import { database } from 'better-auth/adapters/sqlite';
 import Database from 'better-sqlite3';
 
+const db = new Database('./auth.db');
+
 export const auth = betterAuth({
-  database: database(new Database('./auth.db')),
+  database: db,
   emailAndPassword: {
     enabled: true,
   },
