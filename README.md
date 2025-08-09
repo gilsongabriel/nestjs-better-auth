@@ -47,8 +47,8 @@ async function bootstrap() {
 bootstrap();
 ```
 
-> [!WARNING]  
-> Currently, Better Auth's NestJS integration **only supports Express** and does not work with Fastify.
+> [!NOTE]  
+> Better Auth's NestJS integration supports both **Express** and **Fastify** with automatic detection. The library will automatically detect which HTTP adapter you're using and configure itself accordingly.
 
 **2. Import AuthModule**
 
@@ -61,7 +61,59 @@ import { auth } from "./auth";
 
 @Module({
   imports: [
-    AuthModule.forRoot(auth),
+    AuthModule.forRoot(auth), // Automatically detects Express or Fastify
+  ],
+})
+export class AppModule {}
+```
+
+## HTTP Adapter Support
+
+The library supports both Express and Fastify with automatic detection:
+
+### Express (Default)
+
+```ts title="main.ts"
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false, // Required for Better Auth
+  });
+  await app.listen(process.env.PORT ?? 3333);
+}
+bootstrap();
+```
+
+### Fastify
+
+```ts title="main.ts"
+import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+    { bodyParser: false } // Required for Better Auth
+  );
+  await app.listen(process.env.PORT ?? 3333);
+}
+bootstrap();
+```
+
+### Manual Adapter Selection
+
+If automatic detection doesn't work, you can manually specify the adapter:
+
+```ts title="app.module.ts"
+@Module({
+  imports: [
+    AuthModule.forRoot(auth, {
+      adapter: 'fastify', // or 'express'
+    }),
   ],
 })
 export class AppModule {}
@@ -318,9 +370,10 @@ When configuring `AuthModule.forRoot()`, you can provide options to customize th
 
 ```typescript
 AuthModule.forRoot(auth, {
-  disableExceptionFilter: false,
-  disableTrustedOriginsCors: false,
-  disableBodyParser: false
+  adapter: 'express', // or 'fastify' - optional, auto-detected by default
+  disableExceptionFilter: false, // Disable the built-in exception filter
+  disableTrustedOriginsCors: false, // Disable CORS for trusted origins
+  disableBodyParser: false, // Disable the body parser middleware
 })
 ```
 
@@ -328,6 +381,43 @@ The available options are:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `adapter` | auto-detected | Manually specify the HTTP adapter ('express' or 'fastify'). By default, the library auto-detects the adapter. |
 | `disableExceptionFilter` | `false` | When set to `true`, disables the built-in exception filter for handling `APIError` instances. Use this if you want to implement your own custom exception filter. |
 | `disableTrustedOriginsCors` | `false` | When set to `true`, disables the automatic CORS configuration for the origins specified in `trustedOrigins`. Use this if you want to handle CORS configuration manually. |
 | `disableBodyParser` | `false` | When set to `true`, disables the automatic body parser middleware. Use this if you want to handle request body parsing manually. |
+
+## Examples
+
+The project includes complete working examples for both Express and Fastify:
+
+- **Express Example**: `examples/express-example.ts`
+- **Fastify Example**: `examples/fastify-example.ts`
+
+To run the examples:
+
+```bash
+# Express example (runs on port 3000)
+bun run dev:express
+
+# Fastify example (runs on port 3333)
+bun run dev:fastify
+```
+
+## Testing
+
+The project includes comprehensive tests for both adapters:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Run tests with coverage
+bun test:coverage
+```
+
+Test files:
+- `tests/adapter-factory.test.ts` - Unit tests for adapter factory
+- `tests/integration.test.ts` - Integration tests for both Express and Fastify

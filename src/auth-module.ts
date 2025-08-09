@@ -14,12 +14,11 @@ import {
 	MetadataScanner,
 } from "@nestjs/core";
 import type { Auth } from "better-auth";
-import { toNodeHandler } from "better-auth/node";
 import { createAuthMiddleware } from "better-auth/plugins";
-import type { Request, Response } from "express";
 import { APIErrorExceptionFilter } from "./api-error-exception-filter.ts";
 import { AuthService } from "./auth-service.ts";
-import { SkipBodyParsingMiddleware } from "./middlewares.ts";
+import { AdapterFactory } from "./adapters/adapter-factory.ts";
+import type { AuthModuleOptions, HttpAdapterStrategy } from "./types/adapter-types.ts";
 import {
 	AFTER_HOOK_KEY,
 	AUTH_INSTANCE_KEY,
@@ -28,14 +27,7 @@ import {
 	HOOK_KEY,
 } from "./symbols.ts";
 
-/**
- * Configuration options for the AuthModule
- */
-type AuthModuleOptions = {
-	disableExceptionFilter?: boolean;
-	disableTrustedOriginsCors?: boolean;
-	disableBodyParser?: boolean;
-};
+// AuthModuleOptions agora é importado de types/adapter-types.ts
 
 const HOOKS = [
 	{ metadataKey: BEFORE_HOOK_KEY, hookType: "before" as const },
@@ -51,6 +43,8 @@ const HOOKS = [
 })
 export class AuthModule implements NestModule, OnModuleInit {
 	private readonly logger = new Logger(AuthModule.name);
+	private adapterStrategy: HttpAdapterStrategy;
+
 	constructor(
 		@Inject(AUTH_INSTANCE_KEY) private readonly auth: Auth,
 		@Inject(DiscoveryService)
@@ -61,7 +55,13 @@ export class AuthModule implements NestModule, OnModuleInit {
 		private readonly adapter: HttpAdapterHost,
 		@Inject(AUTH_MODULE_OPTIONS_KEY)
 		private readonly options: AuthModuleOptions,
-	) {}
+	) {
+		// Detecção automática ou manual do adaptador
+		const adapterType = this.options.adapter || AdapterFactory.detectAdapterType(this.adapter.httpAdapter);
+		this.adapterStrategy = AdapterFactory.create(adapterType, this.auth, this.options);
+		
+		this.logger.log(`Using ${adapterType} adapter for Better Auth integration`);
+	}
 
 	onModuleInit(): void {
 		// Setup hooks
@@ -85,9 +85,8 @@ export class AuthModule implements NestModule, OnModuleInit {
 	}
 
 	configure(consumer: MiddlewareConsumer): void {
+		// Configurar CORS se necessário
 		const trustedOrigins = this.auth.options.trustedOrigins;
-		// function-based trustedOrigins requires a Request (from web-apis) object to evaluate, which is not available in NestJS (we only have a express Request object)
-		// if we ever need this, take a look at better-call which show an implementation for this
 		const isNotFunctionBased = trustedOrigins && Array.isArray(trustedOrigins);
 
 		if (!this.options.disableTrustedOriginsCors && isNotFunctionBased) {
@@ -96,42 +95,10 @@ export class AuthModule implements NestModule, OnModuleInit {
 				methods: ["GET", "POST", "PUT", "DELETE"],
 				credentials: true,
 			});
-		} else if (
-			trustedOrigins &&
-			!this.options.disableTrustedOriginsCors &&
-			!isNotFunctionBased
-		)
-			throw new Error(
-				"Function-based trustedOrigins not supported in NestJS. Use string array or disable CORS with disableTrustedOriginsCors: true.",
-			);
-
-		if (!this.options.disableBodyParser)
-			consumer.apply(SkipBodyParsingMiddleware).forRoutes("*path");
-
-		// Get basePath from options or use default
-		let basePath = this.auth.options.basePath ?? "/api/auth";
-
-		// Ensure basePath starts with /
-		if (!basePath.startsWith("/")) {
-			basePath = `/${basePath}`;
 		}
 
-		// Ensure basePath doesn't end with /
-		if (basePath.endsWith("/")) {
-			basePath = basePath.slice(0, -1);
-		}
-
-		const handler = toNodeHandler(this.auth);
-		this.adapter.httpAdapter
-			.getInstance()
-			// little hack to ignore any global prefix
-			// for now i'll just not support a global prefix
-			.use(`${basePath}/*path`, (req: Request, res: Response) => {
-				req.url = req.originalUrl;
-
-				return handler(req, res);
-			});
-		this.logger.log(`AuthModule initialized BetterAuth on '${basePath}/*'`);
+		// Delegar configuração para o adaptador específico
+		this.adapterStrategy.configure(consumer, this.adapter);
 	}
 
 	private setupHooks(

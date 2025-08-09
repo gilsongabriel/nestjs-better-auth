@@ -1,23 +1,6 @@
-import { Injectable, type NestMiddleware } from "@nestjs/common";
-import type { NextFunction, Request, Response } from "express";
-import * as express from "express";
+// Re-export do middleware específico do Express para manter compatibilidade
+// Este arquivo será mantido para compatibilidade com versões anteriores
+export { SkipBodyParsingMiddleware } from './middlewares/express/skip-body-parsing.middleware.ts';
 
-@Injectable()
-export class SkipBodyParsingMiddleware implements NestMiddleware {
-	use(req: Request, res: Response, next: NextFunction): void {
-		// skip body parsing for better-auth routes
-		if (req.baseUrl.startsWith("/api/auth")) {
-			next();
-			return;
-		}
-
-		// Parse the body as usual
-		express.json()(req, res, (err) => {
-			if (err) {
-				next(err);
-				return;
-			}
-			express.urlencoded({ extended: true })(req, res, next);
-		});
-	}
-}
+// Nota: Este arquivo é mantido apenas para compatibilidade.
+// Para novos projetos, use os adaptadores específicos em src/adapters/
