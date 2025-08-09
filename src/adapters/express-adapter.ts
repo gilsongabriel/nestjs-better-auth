@@ -7,8 +7,8 @@ import { BaseAdapter } from '../types/adapter-types.ts';
 import { SkipBodyParsingMiddleware } from '../middlewares/express/skip-body-parsing.middleware.ts';
 
 /**
- * Adaptador específico para Express
- * Mantém a funcionalidade original do projeto
+ * Express-specific adapter
+ * Maintains the original project functionality
  */
 export class ExpressAdapter extends BaseAdapter {
 	private readonly logger = new Logger(ExpressAdapter.name);
@@ -21,7 +21,7 @@ export class ExpressAdapter extends BaseAdapter {
 		const trustedOrigins = this.auth.options.trustedOrigins;
 		const isNotFunctionBased = trustedOrigins && Array.isArray(trustedOrigins);
 
-		// Configurar CORS se necessário
+		// Configure CORS if necessary
 		if (!this.options.disableTrustedOriginsCors && isNotFunctionBased) {
 			this.setupCors(trustedOrigins);
 		} else if (
@@ -34,23 +34,23 @@ export class ExpressAdapter extends BaseAdapter {
 			);
 		}
 
-		// Configurar body parser
+		// Configure body parser
 		if (!this.options.disableBodyParser) {
 			consumer.apply(SkipBodyParsingMiddleware).forRoutes('*path');
 		}
 
-		// Configurar handler de autenticação
+		// Configure authentication handler
 		this.setupAuthHandler(this.getBasePath(), adapter);
 	}
 
 	setupCors(trustedOrigins: string[]): void {
-		// Esta implementação será chamada pelo configure quando necessário
-		// A configuração real de CORS é feita no HttpAdapterHost
+		// This implementation will be called by configure when needed
+		// The actual CORS configuration is done in HttpAdapterHost
 	}
 
 	setupBodyParser(): void {
-		// Body parser é configurado via middleware no Express
-		// A implementação real está no SkipBodyParsingMiddleware
+		// Body parser is configured via middleware in Express
+		// The actual implementation is in SkipBodyParsingMiddleware
 	}
 
 	setupAuthHandler(basePath: string, adapter: HttpAdapterHost): void {

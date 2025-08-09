@@ -1,31 +1,31 @@
-# Plano de Implementação: Suporte ao Fastify
+# Implementation Plan: Fastify Support
 
-## Análise do Projeto Atual
+## Current Project Analysis
 
-O projeto **nestjs-better-auth** é uma biblioteca de integração do Better Auth com NestJS que atualmente:
+The **nestjs-better-auth** project is a Better Auth integration library with NestJS that currently:
 
-- **Suporta apenas Express** (conforme documentado no README)
-- Usa middlewares específicos do Express (`SkipBodyParsingMiddleware`)
-- Implementa handlers usando `toNodeHandler` do Better Auth
-- Utiliza Bun como runtime conforme as regras do Cursor
-- Possui arquitetura modular com guards, decorators e hooks
+- **Supports only Express** (as documented in the README)
+- Uses Express-specific middlewares (`SkipBodyParsingMiddleware`)
+- Implements handlers using `toNodeHandler` from Better Auth
+- Uses Bun as runtime according to Cursor rules
+- Has modular architecture with guards, decorators and hooks
 
-## Objetivo
+## Objective
 
-Implementar suporte ao Fastify mantendo total compatibilidade com Express, permitindo alternância automática ou manual entre os dois adaptadores HTTP.
+Implement Fastify support while maintaining full compatibility with Express, allowing automatic or manual switching between the two HTTP adapters.
 
-## Estratégia de Implementação
+## Implementation Strategy
 
-### 1. Detecção Automática do Adaptador
+### 1. Automatic Adapter Detection
 
 ```typescript
-// Detectar automaticamente o adaptador HTTP usado
+// Automatically detect the HTTP adapter used
 const adapterType = this.adapter.httpAdapter.getType(); // 'express' | 'fastify'
 ```
 
-A detecção será feita através do `HttpAdapterHost` do NestJS, que já fornece informações sobre o tipo de adaptador em uso.
+Detection will be done through NestJS's `HttpAdapterHost`, which already provides information about the adapter type in use.
 
-### 2. Estrutura de Arquivos Proposta
+### 2. Proposed File Structure
 
 ```
 src/
@@ -67,9 +67,9 @@ abstract class BaseAdapter implements HttpAdapterStrategy {
   abstract configure(consumer: MiddlewareConsumer, adapter: HttpAdapterHost): void;
   abstract setupAuthHandler(basePath: string): void;
   
-  // Implementações comuns
+  // Common implementations
   setupCors(trustedOrigins: string[]): void {
-    // Lógica comum de CORS
+    // Common CORS logic
   }
 }
 ```
@@ -83,7 +83,7 @@ export class ExpressAdapter extends BaseAdapter {
   }
 
   configure(consumer: MiddlewareConsumer, adapter: HttpAdapterHost): void {
-    // Mantém a implementação atual
+    // Maintains current implementation
     if (!this.options.disableBodyParser) {
       consumer.apply(SkipBodyParsingMiddleware).forRoutes('*path');
     }
@@ -122,15 +122,15 @@ export class FastifyAdapter extends BaseAdapter {
   private setupFastifyBodyParser(adapter: HttpAdapterHost): void {
     const fastifyInstance = adapter.httpAdapter.getInstance();
     
-    // Registrar plugin de body parser personalizado
+    // Register custom body parser plugin
     fastifyInstance.register(async (fastify) => {
       fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, 
         (req, body, done) => {
           if (req.url?.startsWith('/api/auth')) {
-            // Pular parsing para rotas do Better Auth
+            // Skip parsing for Better Auth routes
             done(null, body);
           } else {
-            // Parse normal para outras rotas
+            // Normal parsing for other routes
             try {
               const json = JSON.parse(body.toString());
               done(null, json);
@@ -147,10 +147,10 @@ export class FastifyAdapter extends BaseAdapter {
     const fastifyInstance = adapter.httpAdapter.getInstance();
     const handler = toNodeHandler(this.auth);
     
-    // Registrar rota wildcard para Better Auth
+    // Register wildcard route for Better Auth
     fastifyInstance.register(async (fastify) => {
       fastify.all(`${basePath}/*`, async (request, reply) => {
-        // Converter request/reply do Fastify para Node.js
+        // Convert Fastify request/reply to Node.js
         const nodeReq = this.convertFastifyRequestToNode(request);
         const nodeRes = this.convertFastifyReplyToNode(reply);
         
@@ -160,7 +160,7 @@ export class FastifyAdapter extends BaseAdapter {
   }
 
   private convertFastifyRequestToNode(request: FastifyRequest): any {
-    // Implementar conversão de FastifyRequest para Node.js Request
+    // Implement conversion from FastifyRequest to Node.js Request
     return {
       ...request.raw,
       url: request.url,
@@ -171,7 +171,7 @@ export class FastifyAdapter extends BaseAdapter {
   }
 
   private convertFastifyReplyToNode(reply: FastifyReply): any {
-    // Implementar conversão de FastifyReply para Node.js Response
+    // Implement conversion from FastifyReply to Node.js Response
     return {
       ...reply.raw,
       status: (code: number) => reply.status(code),
@@ -182,7 +182,7 @@ export class FastifyAdapter extends BaseAdapter {
 }
 ```
 
-### 6. Factory para Criação de Adaptadores
+### 6. Factory for Adapter Creation
 
 ```typescript
 export class AdapterFactory {
@@ -203,7 +203,7 @@ export class AdapterFactory {
 }
 ```
 
-### 7. Modificações no AuthModule
+### 7. AuthModule Modifications
 
 ```typescript
 @Module({
@@ -220,7 +220,7 @@ export class AuthModule implements NestModule, OnModuleInit {
     @Inject(HttpAdapterHost) private readonly adapter: HttpAdapterHost,
     @Inject(AUTH_MODULE_OPTIONS_KEY) private readonly options: AuthModuleOptions,
   ) {
-    // Detecção automática ou manual do adaptador
+    // Automatic or manual adapter detection
     const adapterType = this.options.adapter || this.adapter.httpAdapter.getType();
     this.adapterStrategy = AdapterFactory.create(adapterType, this.auth, this.options);
     
@@ -231,22 +231,22 @@ export class AuthModule implements NestModule, OnModuleInit {
     this.adapterStrategy.configure(consumer, this.adapter);
   }
 
-  // ... resto da implementação permanece igual
+  // ... rest of implementation remains the same
 }
 ```
 
-### 8. Atualização dos Tipos de Configuração
+### 8. Configuration Types Update
 
 ```typescript
 type AuthModuleOptions = {
-  adapter?: 'express' | 'fastify'; // Permite override manual
+  adapter?: 'express' | 'fastify'; // Allows manual override
   disableExceptionFilter?: boolean;
   disableTrustedOriginsCors?: boolean;
   disableBodyParser?: boolean;
 };
 ```
 
-### 9. Atualização do package.json
+### 9. package.json Update
 
 ```json
 {
@@ -279,36 +279,36 @@ type AuthModuleOptions = {
 }
 ```
 
-## Configuração e Uso
+## Configuration and Usage
 
-### Detecção Automática (Recomendado)
+### Automatic Detection (Recommended)
 
 ```typescript
 // app.module.ts
 @Module({
   imports: [
-    AuthModule.forRoot(auth), // Detecta automaticamente Express ou Fastify
+    AuthModule.forRoot(auth), // Automatically detects Express or Fastify
   ],
 })
 export class AppModule {}
 ```
 
-### Configuração Manual
+### Manual Configuration
 
 ```typescript
 // app.module.ts
 @Module({
   imports: [
     AuthModule.forRoot(auth, {
-      adapter: 'fastify', // ou 'express'
-      // ... outras opções
+      adapter: 'fastify', // or 'express'
+      // ... other options
     }),
   ],
 })
 export class AppModule {}
 ```
 
-### Exemplo com Fastify
+### Example with Fastify
 
 ```typescript
 // main.ts
@@ -320,7 +320,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
-    { bodyParser: false } // Importante: desabilitar body parser
+    { bodyParser: false } // Important: disable body parser
   );
   
   await app.listen(process.env.PORT ?? 3333);
@@ -328,9 +328,9 @@ async function bootstrap() {
 bootstrap();
 ```
 
-## Testes e Validação
+## Testing and Validation
 
-### Estrutura de Testes
+### Test Structure
 
 ```
 tests/
@@ -347,36 +347,36 @@ tests/
     └── auth-service.spec.ts
 ```
 
-### Comandos de Teste (usando Bun)
+### Test Commands (using Bun)
 
 ```bash
-# Testar todos os adaptadores
+# Test all adapters
 bun test
 
-# Testar apenas Express
+# Test only Express
 bun test tests/express/
 
-# Testar apenas Fastify
+# Test only Fastify
 bun test tests/fastify/
 ```
 
-## Documentação
+## Documentation
 
-### Atualizações no README.md
+### README.md Updates
 
-1. **Remover limitação**: Remover a nota "only supports Express"
-2. **Adicionar seção Fastify**: Documentar configuração e uso com Fastify
-3. **Exemplos**: Incluir exemplos de configuração para ambos os adaptadores
-4. **Migração**: Guia de migração para projetos existentes
+1. **Remove limitation**: Remove the "only supports Express" note
+2. **Add Fastify section**: Document configuration and usage with Fastify
+3. **Examples**: Include configuration examples for both adapters
+4. **Migration**: Migration guide for existing projects
 
-### Nova Seção: Suporte Multi-Adaptador
+### New Section: Multi-Adapter Support
 
 ```markdown
-## Suporte Multi-Adaptador
+## Multi-Adapter Support
 
-A biblioteca suporta tanto Express quanto Fastify através de detecção automática:
+The library supports both Express and Fastify through automatic detection:
 
-### Express (Padrão)
+### Express (Default)
 ```typescript
 // main.ts - Express
 import { NestFactory } from '@nestjs/core';
@@ -404,69 +404,69 @@ async function bootstrap() {
 ```
 ```
 
-## Vantagens da Implementação
+## Implementation Advantages
 
-### 1. **Compatibilidade Total**
-- Projetos Express existentes continuam funcionando sem modificações
-- Todos os decorators, guards e hooks funcionam em ambos os adaptadores
+### 1. **Full Compatibility**
+- Existing Express projects continue working without modifications
+- All decorators, guards and hooks work on both adapters
 
-### 2. **Detecção Automática**
-- Não requer configuração adicional na maioria dos casos
-- Reduz complexidade para o desenvolvedor
+### 2. **Automatic Detection**
+- No additional configuration required in most cases
+- Reduces complexity for the developer
 
-### 3. **Performance Otimizada**
-- Cada adaptador otimizado para sua plataforma específica
-- Fastify: melhor performance em throughput
-- Express: maior ecossistema e compatibilidade
+### 3. **Optimized Performance**
+- Each adapter optimized for its specific platform
+- Fastify: better throughput performance
+- Express: larger ecosystem and compatibility
 
-### 4. **Flexibilidade**
-- Permite override manual quando necessário
-- Suporte a configurações específicas por adaptador
+### 4. **Flexibility**
+- Allows manual override when necessary
+- Support for adapter-specific configurations
 
-### 5. **Manutenibilidade**
-- Código separado por adaptador facilita manutenção
-- Interface comum garante consistência
-- Testes isolados por adaptador
+### 5. **Maintainability**
+- Separate code per adapter facilitates maintenance
+- Common interface ensures consistency
+- Isolated tests per adapter
 
-## Cronograma de Implementação
+## Implementation Timeline
 
-### Fase 1: Estrutura Base (1-2 semanas)
-- [ ] Criar interfaces e tipos base
-- [ ] Implementar factory de adaptadores
-- [ ] Refatorar código Express existente
+### Phase 1: Base Structure (1-2 weeks)
+- [ ] Create base interfaces and types
+- [ ] Implement adapter factory
+- [ ] Refactor existing Express code
 
-### Fase 2: Implementação Fastify (2-3 semanas)
-- [ ] Desenvolver FastifyAdapter
-- [ ] Implementar middlewares específicos
-- [ ] Converter handlers Node.js ↔ Fastify
+### Phase 2: Fastify Implementation (2-3 weeks)
+- [ ] Develop FastifyAdapter
+- [ ] Implement specific middlewares
+- [ ] Convert Node.js ↔ Fastify handlers
 
-### Fase 3: Integração e Testes (1-2 semanas)
-- [ ] Modificar AuthModule para suporte multi-adaptador
-- [ ] Implementar detecção automática
-- [ ] Criar suite de testes completa
+### Phase 3: Integration and Testing (1-2 weeks)
+- [ ] Modify AuthModule for multi-adapter support
+- [ ] Implement automatic detection
+- [ ] Create complete test suite
 
-### Fase 4: Documentação e Release (1 semana)
-- [ ] Atualizar documentação
-- [ ] Criar exemplos de uso
-- [ ] Preparar release notes
-- [ ] Publicar versão beta
+### Phase 4: Documentation and Release (1 week)
+- [ ] Update documentation
+- [ ] Create usage examples
+- [ ] Prepare release notes
+- [ ] Publish beta version
 
-## Considerações Técnicas
+## Technical Considerations
 
-### Limitações Conhecidas
+### Known Limitations
 
-1. **Conversão de Tipos**: Diferenças entre Request/Response do Express e Fastify
-2. **Middlewares**: Alguns middlewares podem precisar de adaptação específica
-3. **Plugins**: Plugins do Fastify podem conflitar com Better Auth
+1. **Type Conversion**: Differences between Express and Fastify Request/Response
+2. **Middlewares**: Some middlewares may need specific adaptation
+3. **Plugins**: Fastify plugins may conflict with Better Auth
 
-### Soluções Propostas
+### Proposed Solutions
 
-1. **Adaptadores de Tipo**: Converter objetos entre formatos automaticamente
-2. **Middleware Factory**: Criar middlewares específicos por adaptador
-3. **Isolamento**: Registrar Better Auth em contexto isolado
+1. **Type Adapters**: Convert objects between formats automatically
+2. **Middleware Factory**: Create adapter-specific middlewares
+3. **Isolation**: Register Better Auth in isolated context
 
-## Conclusão
+## Conclusion
 
-Esta implementação permitirá que o nestjs-better-auth suporte tanto Express quanto Fastify mantendo total compatibilidade com código existente. A detecção automática simplifica o uso, enquanto a arquitetura modular facilita manutenção e extensibilidade futura.
+This implementation will allow nestjs-better-auth to support both Express and Fastify while maintaining full compatibility with existing code. Automatic detection simplifies usage, while modular architecture facilitates maintenance and future extensibility.
 
-O projeto continuará seguindo as diretrizes do Cursor usando Bun como runtime e manterá a filosofia de simplicidade e performance que caracteriza o Better Auth.
+The project will continue following Cursor guidelines using Bun as runtime and maintain the simplicity and performance philosophy that characterizes Better Auth.

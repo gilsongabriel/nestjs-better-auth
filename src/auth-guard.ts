@@ -1,7 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import type { Auth } from "better-auth";
+import type { betterAuth } from "better-auth";
+
+type Auth = ReturnType<typeof betterAuth>;
 import { APIError, type getSession } from "better-auth/api";
 import { fromNodeHeaders } from "better-auth/node";
 import { AUTH_INSTANCE_KEY } from "./symbols.ts";

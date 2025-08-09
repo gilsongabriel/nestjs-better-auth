@@ -1,5 +1,5 @@
 /**
- * Tipos específicos para integração com Fastify
+ * Specific types for Fastify integration
  */
 export interface FastifyAuthRequest {
   url: string;
@@ -18,7 +18,7 @@ export interface FastifyAuthReply {
 }
 
 /**
- * Interfaces para conversão entre Fastify e Node.js
+ * Interfaces for conversion between Fastify and Node.js
  */
 export interface NodeRequestLike {
   url?: string;
@@ -40,11 +40,11 @@ export interface NodeResponseLike {
 }
 
 /**
- * Utilitário para conversão entre objetos Fastify e Node.js
+ * Utility for conversion between Fastify and Node.js objects
  */
 export class FastifyNodeConverter {
   /**
-   * Converte FastifyRequest para formato Node.js
+   * Converts FastifyRequest to Node.js format
    */
   static requestToNode(request: FastifyAuthRequest): NodeRequestLike {
     return {
@@ -57,7 +57,7 @@ export class FastifyNodeConverter {
   }
 
   /**
-   * Converte FastifyReply para formato Node.js
+   * Converts FastifyReply to Node.js format
    */
   static replyToNode(reply: FastifyAuthReply): NodeResponseLike {
     return {

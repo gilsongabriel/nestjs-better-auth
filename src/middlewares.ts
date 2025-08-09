@@ -1,6 +1,6 @@
-// Re-export do middleware específico do Express para manter compatibilidade
-// Este arquivo será mantido para compatibilidade com versões anteriores
+// Re-export of Express-specific middleware to maintain compatibility
+// This file will be maintained for backward compatibility
 export { SkipBodyParsingMiddleware } from './middlewares/express/skip-body-parsing.middleware.ts';
 
-// Nota: Este arquivo é mantido apenas para compatibilidade.
-// Para novos projetos, use os adaptadores específicos em src/adapters/
+// Note: This file is maintained for compatibility only.
+// For new projects, use the specific adapters in src/adapters/

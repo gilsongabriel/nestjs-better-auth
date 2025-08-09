@@ -1,6 +1,6 @@
 /**
- * Testes de integração simplificados para validar
- * a criação e configuração dos adaptadores
+ * Simplified integration tests to validate
+ * adapter creation and configuration
  */
 
 import { describe, it, expect } from 'bun:test';
@@ -9,7 +9,7 @@ import { FastifyAdapter } from '../src/adapters/fastify-adapter.ts';
 import { AdapterFactory } from '../src/adapters/adapter-factory.ts';
 import type { AuthModuleOptions } from '../src/types/adapter-types.ts';
 
-// Mock do Better Auth para testes
+// Better Auth mock for tests
 const mockAuth = {
   options: {
     basePath: '/api/auth',

@@ -1,18 +1,20 @@
-import type { Auth } from 'better-auth';
+import type { betterAuth } from 'better-auth';
+
+type Auth = ReturnType<typeof betterAuth>;
 import type { AuthModuleOptions, HttpAdapterStrategy } from '../types/adapter-types.ts';
 import { ExpressAdapter } from './express-adapter.ts';
 import { FastifyAdapter } from './fastify-adapter.ts';
 
 /**
- * Factory para criar adaptadores HTTP baseado no tipo detectado ou configurado
+ * Factory to create HTTP adapters based on detected or configured type
  */
 export class AdapterFactory {
 	/**
-	 * Cria o adaptador apropriado baseado no tipo especificado
-	 * @param adapterType - Tipo do adaptador ('express' | 'fastify')
-	 * @param auth - Instância do Better Auth
-	 * @param options - Opções de configuração do módulo
-	 * @returns Instância do adaptador apropriado
+	 * Creates the appropriate adapter based on the specified type
+	 * @param adapterType - Adapter type ('express' | 'fastify')
+	 * @param auth - Better Auth instance
+	 * @param options - Module configuration options
+	 * @returns Appropriate adapter instance
 	 */
 	static create(
 		adapterType: string,
@@ -32,12 +34,12 @@ export class AdapterFactory {
 	}
 
 	/**
-	 * Detecta automaticamente o tipo de adaptador baseado no HttpAdapterHost
-	 * @param httpAdapter - Instância do adaptador HTTP do NestJS
-	 * @returns Tipo do adaptador detectado
+	 * Automatically detects the adapter type based on HttpAdapterHost
+	 * @param httpAdapter - NestJS HTTP adapter instance
+	 * @returns Detected adapter type
 	 */
 	static detectAdapterType(httpAdapter: any): 'express' | 'fastify' {
-		// Tentar detectar baseado no tipo do adaptador
+		// Try to detect based on adapter type
 		if (httpAdapter && typeof httpAdapter.getType === 'function') {
 			const type = httpAdapter.getType();
 			if (type === 'express' || type === 'fastify') {
@@ -45,35 +47,35 @@ export class AdapterFactory {
 			}
 		}
 
-		// Fallback: detectar baseado na instância
+		// Fallback: detect based on instance
 		const instance = httpAdapter?.getInstance?.();
 		if (instance) {
-			// Verificar se é uma instância do Fastify
+			// Check if it's a Fastify instance
 			if (instance.register && instance.route && instance.addHook) {
 				return 'fastify';
 			}
-			// Verificar se é uma instância do Express
+			// Check if it's an Express instance
 			if (instance.use && instance.get && instance.post) {
 				return 'express';
 			}
 		}
 
-		// Default para Express se não conseguir detectar
+		// Default to Express if unable to detect
 		return 'express';
 	}
 
 	/**
-	 * Valida se o adaptador especificado é suportado
-	 * @param adapterType - Tipo do adaptador a ser validado
-	 * @returns true se suportado, false caso contrário
+	 * Validates if the specified adapter is supported
+	 * @param adapterType - Adapter type to be validated
+	 * @returns true if supported, false otherwise
 	 */
 	static isSupported(adapterType: string): boolean {
 		return ['express', 'fastify'].includes(adapterType.toLowerCase());
 	}
 
 	/**
-	 * Retorna lista de adaptadores suportados
-	 * @returns Array com os tipos de adaptadores suportados
+	 * Returns list of supported adapters
+	 * @returns Array with supported adapter types
 	 */
 	static getSupportedAdapters(): string[] {
 		return ['express', 'fastify'];

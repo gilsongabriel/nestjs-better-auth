@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { MiddlewareConsumer } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { Auth } from 'better-auth';
+import type { betterAuth } from 'better-auth';
+
+type Auth = ReturnType<typeof betterAuth>;
 import { toNodeHandler } from 'better-auth/node';
 import { BaseAdapter } from '../types/adapter-types.ts';
 import type { AuthModuleOptions } from '../types/adapter-types.ts';
@@ -11,10 +14,12 @@ import {
 } from '../types/fastify-types.ts';
 
 /**
- * Adaptador para integração do Better Auth com Fastify no NestJS
+ * Adapter for Better Auth integration with Fastify in NestJS
  */
 @Injectable()
 export class FastifyAdapter extends BaseAdapter {
+  private readonly logger = new Logger(FastifyAdapter.name);
+
   constructor(
     protected readonly auth: Auth,
     protected readonly options: AuthModuleOptions
@@ -26,17 +31,38 @@ export class FastifyAdapter extends BaseAdapter {
     return 'fastify';
   }
 
+  configure(consumer: MiddlewareConsumer, adapter: HttpAdapterHost): void {
+    const trustedOrigins = this.auth.options.trustedOrigins;
+    const isNotFunctionBased = trustedOrigins && Array.isArray(trustedOrigins);
+
+    // Configure CORS if necessary
+    if (!this.options.disableTrustedOriginsCors && isNotFunctionBased) {
+      this.setupCors(trustedOrigins as string[]);
+    } else if (
+      trustedOrigins &&
+      !this.options.disableTrustedOriginsCors &&
+      !isNotFunctionBased
+    ) {
+      throw new Error(
+        'Function-based trustedOrigins not supported in NestJS. Use string array or disable CORS with disableTrustedOriginsCors: true.',
+      );
+    }
+
+    // Configure authentication handler
+    this.setupAuthHandler(this.getBasePath(), adapter);
+  }
+
   setupCors(trustedOrigins: string[]): void {
-    // CORS será configurado no setupAuthHandler para Fastify
+    // CORS will be configured in setupAuthHandler for Fastify
   }
 
   setupBodyParser(): void {
-    // Body parser será configurado no setupAuthHandler para Fastify
+    // Body parser will be configured in setupAuthHandler for Fastify
   }
 
   setupAuthHandler(basePath: string, adapter: HttpAdapterHost): void {
-    const fastifyInstance = adapter.getHttpAdapter().getInstance() as any;
-    
+    const fastifyInstance = adapter.httpAdapter.getInstance() as any;
+
     this.configureCors(fastifyInstance);
     this.configureBodyParser(fastifyInstance);
     this.configureAuthRoutes(basePath, fastifyInstance);
@@ -47,12 +73,12 @@ export class FastifyAdapter extends BaseAdapter {
       return;
     }
 
-    const trustedOrigins = this.auth.options.trustedOrigins || [];
-    if (trustedOrigins.length === 0) {
+    const trustedOrigins = this.auth.options.trustedOrigins;
+    if (!trustedOrigins || !Array.isArray(trustedOrigins) || trustedOrigins.length === 0) {
       return;
     }
 
-    // Registrar plugin de CORS do Fastify
+    // Register Fastify CORS plugin
     fastify.register(async (fastify: any) => {
       fastify.addHook('onRequest', async (request: any, reply: any) => {
         const origin = request.headers.origin;
@@ -71,17 +97,17 @@ export class FastifyAdapter extends BaseAdapter {
       return;
     }
 
-    // Configurar body parser personalizado para Fastify
+    // Configure custom body parser for Fastify
     fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req: any, body: any, done: any) => {
       const url = req.url || '';
       
-      // Ignorar parsing para rotas do Better Auth
+      // Skip parsing for Better Auth routes
       if (url.startsWith(this.auth.options.basePath || '/api/auth')) {
         done(null, body);
         return;
       }
 
-      // Fazer parsing JSON para outras rotas
+      // Parse JSON for other routes
       try {
         const parsed = JSON.parse(body as string);
         done(null, parsed);
@@ -90,17 +116,17 @@ export class FastifyAdapter extends BaseAdapter {
       }
     });
 
-    // Parser para form data
+    // Parser for form data
     fastify.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (req: any, body: any, done: any) => {
       const url = req.url || '';
       
-      // Ignorar parsing para rotas do Better Auth
+      // Skip parsing for Better Auth routes
       if (url.startsWith(this.auth.options.basePath || '/api/auth')) {
         done(null, body);
         return;
       }
 
-      // Fazer parsing de form data para outras rotas
+      // Parse form data for other routes
       try {
         const params = new URLSearchParams(body as string);
         const parsed = Object.fromEntries(params.entries());
@@ -114,21 +140,23 @@ export class FastifyAdapter extends BaseAdapter {
   private configureAuthRoutes(basePath: string, fastify: any): void {
     const authHandler = toNodeHandler(this.auth);
     
-    // Registrar todas as rotas do Better Auth
+    // Register all Better Auth routes
     fastify.register(async (fastify: any) => {
       fastify.all(`${basePath}/*`, async (request: FastifyAuthRequest, reply: FastifyAuthReply) => {
-        // Converter requisição e resposta do Fastify para Node.js
-        const nodeReq = FastifyNodeConverter.requestToNode(request);
-        const nodeRes = FastifyNodeConverter.replyToNode(reply);
-        
-        // Chamar o handler do Better Auth
-        await authHandler(nodeReq, nodeRes);
-        
-        // Se a resposta não foi enviada, enviar resposta vazia
-        if (!reply.sent) {
-          reply.code(404).send({ error: 'Not Found' });
+        try {
+          // Use the raw Node.js request/response objects directly
+          const nodeRequest = request.raw;
+          const nodeResponse = reply.raw;
+          
+          // Call Better Auth handler
+          await authHandler(nodeRequest, nodeResponse);
+        } catch (error) {
+          this.logger.error('Auth handler error:', error);
+          reply.code(500).send({ error: 'Internal server error' });
         }
       });
     });
+
+    this.logger.log(`Fastify adapter initialized BetterAuth on '${basePath}/*'`);
   }
 }

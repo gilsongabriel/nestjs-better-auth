@@ -1,8 +1,8 @@
 /**
- * Exemplo de uso do nestjs-better-auth com Fastify
+ * Example usage of nestjs-better-auth with Fastify
  * 
- * Este exemplo demonstra como configurar uma aplicação NestJS
- * usando Fastify como adaptador HTTP com Better Auth
+ * This example demonstrates how to configure a NestJS application
+ * using Fastify as HTTP adapter with Better Auth
  */
 
 import { NestFactory } from '@nestjs/core';
@@ -12,7 +12,7 @@ import { AuthModule, AuthGuard, Session, UserSession } from '@thallesp/nestjs-be
 import { betterAuth } from 'better-auth';
 import { emailOTP } from 'better-auth/plugins';
 
-// Configuração do Better Auth
+// Better Auth configuration
 const auth = betterAuth({
   database: {
     provider: 'sqlite',
@@ -31,7 +31,7 @@ const auth = betterAuth({
   trustedOrigins: ['http://localhost:3000'],
 });
 
-// Controller de exemplo
+// Example controller
 @Controller('api')
 export class AppController {
   @Get('public')
@@ -60,36 +60,36 @@ export class AppController {
   }
 }
 
-// Módulo principal
+// Main module
 @Module({
   imports: [
     AuthModule.forRoot(auth, {
-      // adapter: 'fastify', // Opcional: detecção automática funciona
+      // adapter: 'fastify', // Optional: automatic detection works
     }),
   ],
   controllers: [AppController],
 })
 export class AppModule {}
 
-// Bootstrap da aplicação
+// Application bootstrap
 async function bootstrap(): Promise<void> {
   const app: NestFastifyApplication = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      logger: true, // Habilitar logs do Fastify
+      logger: true, // Enable Fastify logs
     }),
     {
-      bodyParser: false, // Importante: desabilitar body parser do NestJS
-      logger: ['error', 'warn', 'log'], // Logs do NestJS
+      bodyParser: false, // Important: disable NestJS body parser
+      logger: ['error', 'warn', 'log'], // NestJS logs
     }
   );
 
-  // Configurações adicionais do Fastify (opcional)
+  // Additional Fastify configurations (optional)
   await app.register(require('@fastify/helmet'), {
     contentSecurityPolicy: false,
   });
 
-  // Iniciar servidor
+  // Start server
   const port: string | number = process.env.PORT || 3333;
   await app.listen(port, '0.0.0.0');
   
@@ -97,31 +97,31 @@ async function bootstrap(): Promise<void> {
   console.log(`🔐 Auth endpoints available at: http://localhost:${port}/api/auth/*`);
 }
 
-// Tratamento de erros
+// Error handling
 bootstrap().catch((error: Error) => {
   console.error('❌ Error starting application:', error);
   process.exit(1);
 });
 
 /**
- * Para testar este exemplo:
+ * To test this example:
  * 
- * 1. Instale as dependências:
+ * 1. Install dependencies:
  *    bun install @nestjs/platform-fastify fastify
  * 
- * 2. Execute o exemplo:
+ * 2. Run the example:
  *    bun run fastify-example.ts
  * 
- * 3. Teste os endpoints:
- *    - GET http://localhost:3333/api/public (público)
- *    - GET http://localhost:3333/api/protected (requer autenticação)
- *    - POST http://localhost:3333/api/auth/sign-up/email (criar conta)
- *    - POST http://localhost:3333/api/auth/sign-in/email (fazer login)
+ * 3. Test the endpoints:
+ *    - GET http://localhost:3333/api/public (public)
+ *    - GET http://localhost:3333/api/protected (requires authentication)
+ *    - POST http://localhost:3333/api/auth/sign-up/email (create account)
+ *    - POST http://localhost:3333/api/auth/sign-in/email (login)
  * 
- * 4. Vantagens do Fastify:
- *    - Melhor performance (até 2x mais rápido que Express)
- *    - Validação de schema integrada
- *    - Sistema de plugins robusto
- *    - Suporte nativo a TypeScript
- *    - Logs estruturados
+ * 4. Fastify advantages:
+ *    - Better performance (up to 2x faster than Express)
+ *    - Integrated schema validation
+ *    - Robust plugin system
+ *    - Native TypeScript support
+ *    - Structured logging
  */

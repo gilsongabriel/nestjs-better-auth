@@ -421,3 +421,51 @@ bun test:coverage
 Test files:
 - `tests/adapter-factory.test.ts` - Unit tests for adapter factory
 - `tests/integration.test.ts` - Integration tests for both Express and Fastify
+
+## 🔗 Real Project Integration Testing
+
+To test the package in a real project before publishing, use npm link:
+
+### Automatic Setup
+
+```bash
+# Complete setup (build + create project + link) - Express
+bun run integration:all:express
+
+# Complete setup (build + create project + link) - Fastify
+bun run integration:all:fastify
+
+# Manual step-by-step setup
+bun run integration:setup     # Build and create global link
+bun run integration:create    # Create test project
+bun run integration:link      # Link package in project
+```
+
+### Available Scripts
+
+- `integration:setup` - Build and create global link
+- `integration:create` - Create default test project
+- `integration:create:express` - Create Express test project
+- `integration:create:fastify` - Create Fastify test project
+- `integration:link` - Link package in test project
+- `integration:unlink` - Remove package link
+- `integration:clean` - Clean test project
+- `integration:all` - Complete setup (Express)
+- `integration:all:express` - Complete Express setup
+- `integration:all:fastify` - Complete Fastify setup
+
+### Manual Testing
+
+After setup, test the integration:
+
+```bash
+# Navigate to test project
+cd ../test-better-auth  # or test-express/test-fastify
+
+# Start development server
+npm run start:dev
+
+# Open test-frontend.html in browser to test
+```
+
+See the detailed guide for more information on integration testing.

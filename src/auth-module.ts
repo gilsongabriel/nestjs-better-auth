@@ -13,7 +13,9 @@ import {
 	HttpAdapterHost,
 	MetadataScanner,
 } from "@nestjs/core";
-import type { Auth } from "better-auth";
+import type { betterAuth } from "better-auth";
+
+type Auth = ReturnType<typeof betterAuth>;
 import { createAuthMiddleware } from "better-auth/plugins";
 import { APIErrorExceptionFilter } from "./api-error-exception-filter.ts";
 import { AuthService } from "./auth-service.ts";
@@ -56,7 +58,7 @@ export class AuthModule implements NestModule, OnModuleInit {
 		@Inject(AUTH_MODULE_OPTIONS_KEY)
 		private readonly options: AuthModuleOptions,
 	) {
-		// Detecção automática ou manual do adaptador
+		// Automatic or manual adapter detection
 		const adapterType = this.options.adapter || AdapterFactory.detectAdapterType(this.adapter.httpAdapter);
 		this.adapterStrategy = AdapterFactory.create(adapterType, this.auth, this.options);
 		
@@ -85,7 +87,7 @@ export class AuthModule implements NestModule, OnModuleInit {
 	}
 
 	configure(consumer: MiddlewareConsumer): void {
-		// Configurar CORS se necessário
+		// Configure CORS if necessary
 		const trustedOrigins = this.auth.options.trustedOrigins;
 		const isNotFunctionBased = trustedOrigins && Array.isArray(trustedOrigins);
 
@@ -97,7 +99,7 @@ export class AuthModule implements NestModule, OnModuleInit {
 			});
 		}
 
-		// Delegar configuração para o adaptador específico
+		// Delegate configuration to specific adapter
 		this.adapterStrategy.configure(consumer, this.adapter);
 	}
 

@@ -3,8 +3,8 @@ import type { NextFunction, Request, Response } from 'express';
 import * as express from 'express';
 
 /**
- * Middleware específico para Express que pula o parsing de body
- * para rotas do Better Auth
+ * Express-specific middleware that skips body parsing
+ * for Better Auth routes
  */
 @Injectable()
 export class SkipBodyParsingMiddleware implements NestMiddleware {
