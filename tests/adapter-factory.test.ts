@@ -3,13 +3,12 @@
  * Validates automatic detection and adapter creation
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { Test } from '@nestjs/testing';
 import { HttpAdapterHost } from '@nestjs/core';
+import { betterAuth } from 'better-auth';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { AdapterFactory } from '../src/adapters/adapter-factory.ts';
 import { ExpressAdapter } from '../src/adapters/express-adapter.ts';
 import { FastifyAdapter } from '../src/adapters/fastify-adapter.ts';
-import { betterAuth } from 'better-auth';
 import type { AuthModuleOptions } from '../src/types/adapter-types.ts';
 
 describe('AdapterFactory', () => {
@@ -58,9 +57,17 @@ describe('AdapterFactory', () => {
     });
 
     it('should be case insensitive', () => {
-      const expressAdapter = AdapterFactory.create('EXPRESS', mockAuth, mockOptions);
-      const fastifyAdapter = AdapterFactory.create('FASTIFY', mockAuth, mockOptions);
-      
+      const expressAdapter = AdapterFactory.create(
+        'EXPRESS',
+        mockAuth,
+        mockOptions
+      );
+      const fastifyAdapter = AdapterFactory.create(
+        'FASTIFY',
+        mockAuth,
+        mockOptions
+      );
+
       expect(expressAdapter).toBeInstanceOf(ExpressAdapter);
       expect(fastifyAdapter).toBeInstanceOf(FastifyAdapter);
     });
@@ -74,7 +81,9 @@ describe('AdapterFactory', () => {
 
   describe('detectAdapterType', () => {
     it('should detect express adapter from HttpAdapterHost', () => {
-      const type = AdapterFactory.detectAdapterType(mockHttpAdapterHost.httpAdapter);
+      const type = AdapterFactory.detectAdapterType(
+        mockHttpAdapterHost.httpAdapter
+      );
       expect(type).toBe('express');
     });
 
@@ -110,7 +119,9 @@ describe('AdapterFactory', () => {
         }),
       } as any;
 
-      const type = AdapterFactory.detectAdapterType(fastifyAdapterWithoutGetType);
+      const type = AdapterFactory.detectAdapterType(
+        fastifyAdapterWithoutGetType
+      );
       expect(type).toBe('fastify');
     });
   });
