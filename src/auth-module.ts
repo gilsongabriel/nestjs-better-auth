@@ -1,4 +1,4 @@
-import { Inject, Logger, Module } from "@nestjs/common";
+import { Inject, Logger, Module, Optional } from "@nestjs/common";
 import type {
 	DynamicModule,
 	MiddlewareConsumer,
@@ -49,25 +49,25 @@ export class AuthModule implements NestModule, OnModuleInit {
 
 	constructor(
 		@Inject(AUTH_INSTANCE_KEY) private readonly auth: Auth,
-		@Inject(DiscoveryService)
+		@Optional() @Inject(DiscoveryService)
 		private readonly discoveryService: DiscoveryService,
-		@Inject(MetadataScanner)
+		@Optional() @Inject(MetadataScanner)
 		private readonly metadataScanner: MetadataScanner,
-		@Inject(HttpAdapterHost)
+		@Optional() @Inject(HttpAdapterHost)
 		private readonly adapter: HttpAdapterHost,
 		@Inject(AUTH_MODULE_OPTIONS_KEY)
 		private readonly options: AuthModuleOptions,
 	) {
 		// Automatic or manual adapter detection
-		const adapterType = this.options.adapter || AdapterFactory.detectAdapterType(this.adapter.httpAdapter);
+		const adapterType = this.options.adapter || (this.adapter ? AdapterFactory.detectAdapterType(this.adapter.httpAdapter) : 'express');
 		this.adapterStrategy = AdapterFactory.create(adapterType, this.auth, this.options);
 		
 		this.logger.log(`Using ${adapterType} adapter for Better Auth integration`);
 	}
 
 	onModuleInit(): void {
-		// Setup hooks
-		if (!this.auth.options.hooks) return;
+		// Setup hooks only if discovery services are available
+		if (!this.auth.options.hooks || !this.discoveryService || !this.metadataScanner) return;
 
 		const providers = this.discoveryService
 			.getProviders()
@@ -165,6 +165,7 @@ export class AuthModule implements NestModule, OnModuleInit {
 		return {
 			global: true,
 			module: AuthModule,
+			imports: [DiscoveryModule], // Ensure DiscoveryModule is imported
 			providers: providers,
 			exports: [
 				{
